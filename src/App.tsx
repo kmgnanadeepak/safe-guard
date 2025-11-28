@@ -1,10 +1,17 @@
+import React, { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import { useEffect } from "react";
+
 import Dashboard from "./pages/Dashboard";
 import FallDetected from "./pages/FallDetected";
 import AlertSent from "./pages/AlertSent";
@@ -22,14 +29,20 @@ const queryClient = new QueryClient();
 
 const AppContent = () => {
   const location = useLocation();
-  const showBottomNav = ['/', '/history', '/sensors', '/settings'].includes(location.pathname);
+  const navigate = useNavigate();
+
+  const showBottomNav = ["/", "/history", "/sensors", "/settings"].includes(
+    location.pathname
+  );
 
   useEffect(() => {
-    const hasCompletedOnboarding = localStorage.getItem('onboarding-complete');
-    if (!hasCompletedOnboarding && location.pathname === '/') {
-      window.location.href = '/onboarding';
+    const hasCompletedOnboarding = localStorage.getItem("onboarding-complete");
+
+    // If onboarding not completed and user is at root, send to onboarding
+    if (!hasCompletedOnboarding && location.pathname === "/") {
+      navigate("/onboarding", { replace: true });
     }
-  }, [location.pathname]);
+  }, [location.pathname, navigate]);
 
   return (
     <>
@@ -52,17 +65,17 @@ const AppContent = () => {
 };
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
+  <BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
           <AppContent />
-        </BrowserRouter>
-      </TooltipProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
+        </TooltipProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  </BrowserRouter>
 );
 
 export default App;
