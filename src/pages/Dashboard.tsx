@@ -2,9 +2,35 @@ import { Activity, MessageSquare, Users, MapPin, AlertCircle } from 'lucide-reac
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { useState, useEffect } from 'react';
 
 const Dashboard = () => {
   const navigate = useNavigate();
+
+  // --- Sensor State (numeric values) ---
+  const [accelerometer, setAccelerometer] = useState<number>(9.8);
+  const [gyroscope, setGyroscope] = useState<number>(0.2);
+
+  // --- Auto-update every 1 second ---
+useEffect(() => {
+  const interval = setInterval(() => {
+    // generate new mock sensor numbers
+    const newAccel = 1.9 + Math.random() * 0.8;
+    const newGyro = 0.1 + Math.random() * 0.4;
+
+    setAccelerometer(newAccel);
+    setGyroscope(newGyro);
+
+    // ---- AUTO FALL DETECTION ----
+    if (newAccel >= 2.6) {
+      handleTestFall();  // triggers fall-detected screen automatically
+    }
+
+  }, 1000);
+
+  return () => clearInterval(interval);
+}, []);
+
 
   const handleTestFall = () => {
     toast.success('Fall detected! SMS would be sent to emergency contact.', {
@@ -16,6 +42,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background p-4 pb-24">
       <div className="max-w-2xl mx-auto space-y-6">
+
         {/* Status Banner */}
         <div className="glass-card rounded-3xl p-6 neon-glow">
           <div className="flex items-center justify-between mb-2">
@@ -31,14 +58,20 @@ const Dashboard = () => {
             <Activity className="w-5 h-5 text-primary" />
             Sensor Status
           </h2>
+
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Accelerometer</span>
-              <span className="text-success font-medium">Active • 9.8 m/s²</span>
+              <span className="text-success font-medium">
+                Active • {accelerometer.toFixed(2)} m/s²
+              </span>
             </div>
+
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Gyroscope</span>
-              <span className="text-success font-medium">Active • 0.2 rad/s</span>
+              <span className="text-success font-medium">
+                Active • {gyroscope.toFixed(2)} rad/s
+              </span>
             </div>
           </div>
         </div>
@@ -46,7 +79,7 @@ const Dashboard = () => {
         {/* Quick Actions */}
         <div className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground px-2">Quick Actions</h2>
-          
+
           <Button
             onClick={handleTestFall}
             className="w-full h-24 glass-card rounded-3xl neon-glow-red hover:scale-105 transition-transform"
