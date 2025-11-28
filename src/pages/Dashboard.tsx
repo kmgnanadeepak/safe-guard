@@ -12,11 +12,73 @@ const Dashboard = () => {
   const [gyroscope, setGyroscope] = useState<number>(0); // deg/s magnitude
   const [sensorSupported, setSensorSupported] = useState<boolean>(true);
 
+  const API_URL = import.meta.env.VITE_API_URL as string; // e.g. https://safebackend.onrender.com
+
+  // 🔁 Helper: call backend to send SMS
+  async function sendAlertToBackend(latitude: number, longitude: number) {
+    try {
+      if (!API_URL) {
+        console.error("VITE_API_URL is not set");
+        toast.error("Backend URL not configured (VITE_API_URL missing).");
+        return;
+      }
+
+      const res = await fetch(`${API_URL}/send-alert`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          latitude,
+          longitude,
+        }),
+      });
+
+      const data = await res.json();
+      console.log("Backend response:", data);
+
+      if (!res.ok || !data.success) {
+        toast.error("Failed to send SMS alert. Check backend/Twilio config.");
+      }
+    } catch (error) {
+      console.error("Error calling backend:", error);
+      toast.error("Network error while sending alert.");
+    }
+  }
+
+  // 🚨 Triggered when fall is detected (auto or Test button)
   const handleTestFall = () => {
-    toast.success('Fall detected! SMS would be sent to emergency contact.', {
-      description: 'In production, this triggers real SMS via Capacitor.',
+    toast.success("Fall detected! Sending SMS to emergency contacts...", {
+      description: "Location will be attached if available.",
     });
-    navigate('/fall-detected');
+
+    // 1) Get GPS location
+    if (!navigator.geolocation) {
+      console.error("Geolocation not supported");
+      // fallback: send with dummy coords (0,0) to satisfy backend validation
+      sendAlertToBackend(0, 0);
+      navigate("/fall-detected");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const latitude = pos.coords.latitude;
+        const longitude = pos.coords.longitude;
+
+        // 2) Call backend with real location
+        sendAlertToBackend(latitude, longitude);
+        navigate("/fall-detected");
+      },
+      (err) => {
+        console.error("Geolocation error:", err);
+
+        // fallback: still send alert with (0,0)
+        sendAlertToBackend(0, 0);
+        navigate("/fall-detected");
+      },
+      { enableHighAccuracy: true }
+    );
   };
 
   // --- Auto start sensors when Dashboard is mounted ---
@@ -50,9 +112,9 @@ const Dashboard = () => {
       }
     };
 
-    if (typeof window !== 'undefined' && 'DeviceMotionEvent' in window) {
+    if (typeof window !== "undefined" && "DeviceMotionEvent" in window) {
       try {
-        window.addEventListener('devicemotion', handleMotion);
+        window.addEventListener("devicemotion", handleMotion);
       } catch (err) {
         console.error(err);
         setSensorSupported(false);
@@ -62,9 +124,9 @@ const Dashboard = () => {
     }
 
     return () => {
-      window.removeEventListener('devicemotion', handleMotion);
+      window.removeEventListener("devicemotion", handleMotion);
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="min-h-screen bg-background p-4 pb-24">
@@ -78,7 +140,7 @@ const Dashboard = () => {
           </div>
           <p className="text-muted-foreground">
             Fall detection is active
-            {!sensorSupported && ' • Sensors not supported on this device/browser'}
+            {!sensorSupported && " • Sensors not supported on this device/browser"}
           </p>
         </div>
 
@@ -93,14 +155,14 @@ const Dashboard = () => {
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Accelerometer</span>
               <span className="text-success font-medium">
-                {sensorSupported ? 'Active' : 'Inactive'} • {accelerometer.toFixed(2)} m/s²
+                {sensorSupported ? "Active" : "Inactive"} • {accelerometer.toFixed(2)} m/s²
               </span>
             </div>
 
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Gyroscope</span>
               <span className="text-success font-medium">
-                {sensorSupported ? 'Active' : 'Inactive'} • {gyroscope.toFixed(2)} °/s
+                {sensorSupported ? "Active" : "Inactive"} • {gyroscope.toFixed(2)} °/s
               </span>
             </div>
           </div>
@@ -126,7 +188,7 @@ const Dashboard = () => {
 
           <div className="grid grid-cols-2 gap-3">
             <Button
-              onClick={() => navigate('/emergency-contacts')}
+              onClick={() => navigate("/emergency-contacts")}
               className="h-32 glass-card rounded-3xl hover:scale-105 transition-transform"
               variant="secondary"
             >
@@ -137,7 +199,7 @@ const Dashboard = () => {
             </Button>
 
             <Button
-              onClick={() => navigate('/chatbot')}
+              onClick={() => navigate("/chatbot")}
               className="h-32 glass-card rounded-3xl hover:scale-105 transition-transform"
               variant="secondary"
             >
@@ -149,7 +211,7 @@ const Dashboard = () => {
           </div>
 
           <Button
-            onClick={() => navigate('/live-location')}
+            onClick={() => navigate("/live-location")}
             className="w-full h-24 glass-card rounded-3xl neon-glow hover:scale-105 transition-transform"
           >
             <div className="flex items-center gap-3 text-foreground">
