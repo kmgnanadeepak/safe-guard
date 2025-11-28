@@ -3,6 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useState } from 'react';
 
+// ⭐ Gemini import
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+// ⭐ DIRECT API KEY HERE
+const genAI = new GoogleGenerativeAI("AIzaSyDBjPq3hTcvjK5ZSEr4BoSyc8M1c8YQN-U");
+
 interface Message {
   id: string;
   text: string;
@@ -14,14 +20,29 @@ const Chatbot = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: 'Hello! I\'m your SafeFall AI assistant. How can I help you today?',
+      text: "Hello! I'm your SafeFall AI assistant. How can I help you today?",
       sender: 'bot',
       timestamp: new Date(),
     },
   ]);
   const [input, setInput] = useState('');
 
-  const handleSend = () => {
+  // ⭐ Gemini call function
+  const askGemini = async (prompt: string) => {
+    try {
+      const model = genAI.getGenerativeModel({
+        model: "gemini-1.5-flash",
+      });
+
+      const result = await model.generateContent(prompt);
+      return result.response.text();
+    } catch (error) {
+      console.error("Gemini Error", error);
+      return "⚠️ Unable to connect to Gemini API. Please check your API key.";
+    }
+  };
+
+  const handleSend = async () => {
     if (!input.trim()) return;
 
     const userMessage: Message = {
@@ -32,18 +53,24 @@ const Chatbot = () => {
     };
 
     setMessages(prev => [...prev, userMessage]);
+
+    const userText = input;
     setInput('');
 
-    // Simulate bot response
-    setTimeout(() => {
+    // show typing delay (optional)
+    setTimeout(async () => {
+      // ⭐ Get AI response from Gemini
+      const reply = await askGemini(userText);
+
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: 'This is a demo chatbot. In the real app, I would help you with fall detection questions, provide safety tips, and assist with emergency procedures.',
+        text: reply,
         sender: 'bot',
         timestamp: new Date(),
       };
+
       setMessages(prev => [...prev, botMessage]);
-    }, 1000);
+    }, 400);
   };
 
   return (
@@ -76,11 +103,24 @@ const Chatbot = () => {
                     : 'glass-card'
                 }`}
               >
-                <p className={message.sender === 'user' ? 'text-primary-foreground' : 'text-foreground'}>
+                <p
+                  className={
+                    message.sender === 'user' ? 'text-primary-foreground' : 'text-foreground'
+                  }
+                >
                   {message.text}
                 </p>
-                <p className={`text-xs mt-2 ${message.sender === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                <p
+                  className={`text-xs mt-2 ${
+                    message.sender === 'user'
+                      ? 'text-primary-foreground/70'
+                      : 'text-muted-foreground'
+                  }`}
+                >
+                  {message.timestamp.toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
                 </p>
               </div>
             </div>
@@ -94,15 +134,11 @@ const Chatbot = () => {
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             placeholder="Type your message..."
             className="rounded-2xl h-12 bg-background/50"
           />
-          <Button
-            onClick={handleSend}
-            size="lg"
-            className="rounded-2xl neon-glow"
-          >
+          <Button onClick={handleSend} size="lg" className="rounded-2xl neon-glow">
             <Send className="w-5 h-5" />
           </Button>
         </div>
