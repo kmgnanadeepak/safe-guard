@@ -12,16 +12,21 @@ const Dashboard = () => {
   const [gyroscope, setGyroscope] = useState<number>(0); // deg/s magnitude
   const [sensorSupported, setSensorSupported] = useState<boolean>(true);
 
-  const API_URL = import.meta.env.VITE_API_URL as string; // e.g. https://safebackend.onrender.com
+  const API_URL = import.meta.env.VITE_API_URL as string | undefined; // e.g. https://safebackend.onrender.com
 
   // 🔁 Helper: call backend to send SMS
-  async function sendAlertToBackend(latitude: number, longitude: number) {
+  async function sendAlertToBackend(latitude: number | null, longitude: number | null) {
     try {
       if (!API_URL) {
-        console.error("VITE_API_URL is not set");
+        console.error("❌ VITE_API_URL is not set in frontend .env");
         toast.error("Backend URL not configured (VITE_API_URL missing).");
         return;
       }
+
+      console.log("➡️ Calling backend:", `${API_URL}/send-alert`, {
+        latitude,
+        longitude,
+      });
 
       const res = await fetch(`${API_URL}/send-alert`, {
         method: "POST",
@@ -35,13 +40,15 @@ const Dashboard = () => {
       });
 
       const data = await res.json();
-      console.log("Backend response:", data);
+      console.log("⬅️ Backend response:", data);
 
       if (!res.ok || !data.success) {
-        toast.error("Failed to send SMS alert. Check backend/Twilio config.");
+        toast.error(data.message || "Failed to send SMS alert. Check backend/Twilio config.");
+      } else {
+        toast.success("SMS alert sent to emergency contacts.");
       }
     } catch (error) {
-      console.error("Error calling backend:", error);
+      console.error("❌ Error calling backend:", error);
       toast.error("Network error while sending alert.");
     }
   }
@@ -54,9 +61,9 @@ const Dashboard = () => {
 
     // 1) Get GPS location
     if (!navigator.geolocation) {
-      console.error("Geolocation not supported");
-      // fallback: send with dummy coords (0,0) to satisfy backend validation
-      sendAlertToBackend(0, 0);
+      console.error("❌ Geolocation not supported in this browser");
+      // fallback: send without location
+      sendAlertToBackend(null, null);
       navigate("/fall-detected");
       return;
     }
@@ -65,16 +72,17 @@ const Dashboard = () => {
       (pos) => {
         const latitude = pos.coords.latitude;
         const longitude = pos.coords.longitude;
+        console.log("📍 Got location:", latitude, longitude);
 
         // 2) Call backend with real location
         sendAlertToBackend(latitude, longitude);
         navigate("/fall-detected");
       },
       (err) => {
-        console.error("Geolocation error:", err);
+        console.error("❌ Geolocation error:", err);
 
-        // fallback: still send alert with (0,0)
-        sendAlertToBackend(0, 0);
+        // fallback: still send alert without location
+        sendAlertToBackend(null, null);
         navigate("/fall-detected");
       },
       { enableHighAccuracy: true }
@@ -98,6 +106,7 @@ const Dashboard = () => {
         // ---- AUTO FALL DETECTION ----
         // ≈ 2.6 g => 2.6 * 9.81 ≈ 25.5 m/s²
         if (magnitudeMs2 >= 25.5) {
+          console.log("🚨 Fall threshold crossed:", magnitudeMs2);
           handleTestFall();
         }
       }
@@ -116,10 +125,11 @@ const Dashboard = () => {
       try {
         window.addEventListener("devicemotion", handleMotion);
       } catch (err) {
-        console.error(err);
+        console.error("❌ Error attaching devicemotion:", err);
         setSensorSupported(false);
       }
     } else {
+      console.warn("⚠️ DeviceMotionEvent not supported in this browser");
       setSensorSupported(false);
     }
 
