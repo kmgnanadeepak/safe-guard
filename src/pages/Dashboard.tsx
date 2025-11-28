@@ -8,29 +8,9 @@ const Dashboard = () => {
   const navigate = useNavigate();
 
   // --- Sensor State (numeric values) ---
-  const [accelerometer, setAccelerometer] = useState<number>(9.8);
-  const [gyroscope, setGyroscope] = useState<number>(0.2);
-
-  // --- Auto-update every 1 second ---
-useEffect(() => {
-  const interval = setInterval(() => {
-    // generate new mock sensor numbers
-    const newAccel = 1.9 + Math.random() * 0.8;
-    const newGyro = 0.1 + Math.random() * 0.4;
-
-    setAccelerometer(newAccel);
-    setGyroscope(newGyro);
-
-    // ---- AUTO FALL DETECTION ----
-    if (newAccel >= 2.6) {
-      handleTestFall();  // triggers fall-detected screen automatically
-    }
-
-  }, 1000);
-
-  return () => clearInterval(interval);
-}, []);
-
+  const [accelerometer, setAccelerometer] = useState<number>(0); // in g (approx)
+  const [gyroscope, setGyroscope] = useState<number>(0); // deg/s magnitude
+  const [sensorsActive, setSensorsActive] = useState<boolean>(false);
 
   const handleTestFall = () => {
     toast.success('Fall detected! SMS would be sent to emergency contact.', {
@@ -38,6 +18,74 @@ useEffect(() => {
     });
     navigate('/fall-detected');
   };
+
+  // --- Start real sensors (must be called from a user gesture) ---
+  const startSensors = async () => {
+    try {
+      // iOS-style permission
+      if (
+        typeof DeviceMotionEvent !== 'undefined' &&
+        typeof (DeviceMotionEvent as any).requestPermission === 'function'
+      ) {
+        const response = await (DeviceMotionEvent as any).requestPermission();
+        if (response !== 'granted') {
+          toast.error('Motion sensor permission denied');
+          return;
+        }
+      }
+
+      setSensorsActive(true);
+      toast.success('Sensors started. Move your phone to see live values.');
+    } catch (err) {
+      console.error(err);
+      toast.error('Motion sensors not supported or blocked on this device.');
+    }
+  };
+
+  // --- Real sensor reading via devicemotion ---
+  useEffect(() => {
+    if (!sensorsActive) return;
+
+    const handleMotion = (event: DeviceMotionEvent) => {
+      const acc =
+        event.accelerationIncludingGravity || event.acceleration;
+
+      if (acc) {
+        const x = acc.x ?? 0;
+        const y = acc.y ?? 0;
+        const z = acc.z ?? 0;
+
+        // magnitude in m/s²
+        const magnitudeMs2 = Math.sqrt(x * x + y * y + z * z);
+
+        // convert to "g" units (approx) so threshold 2.6 still meaningful
+        const magnitudeG = magnitudeMs2 / 9.81;
+
+        setAccelerometer(magnitudeG);
+
+        // ---- AUTO FALL DETECTION ----
+        if (magnitudeG >= 2.6) {
+          handleTestFall();
+        }
+      }
+
+      // Gyroscope (rotationRate is basically gyro data in deg/s)
+      const rot = event.rotationRate;
+      if (rot) {
+        const gx = rot.alpha ?? 0;
+        const gy = rot.beta ?? 0;
+        const gz = rot.gamma ?? 0;
+        const gyroMag = Math.sqrt(gx * gx + gy * gy + gz * gz);
+        setGyroscope(gyroMag);
+      }
+    };
+
+    window.addEventListener('devicemotion', handleMotion);
+
+    return () => {
+      window.removeEventListener('devicemotion', handleMotion);
+    };
+  }, [sensorsActive]);
 
   return (
     <div className="min-h-screen bg-background p-4 pb-24">
@@ -63,17 +111,26 @@ useEffect(() => {
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Accelerometer</span>
               <span className="text-success font-medium">
-                Active • {accelerometer.toFixed(2)} m/s²
+                {sensorsActive ? 'Active' : 'Inactive'} • {accelerometer.toFixed(2)} g
               </span>
             </div>
 
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Gyroscope</span>
               <span className="text-success font-medium">
-                Active • {gyroscope.toFixed(2)} rad/s
+                {sensorsActive ? 'Active' : 'Inactive'} • {gyroscope.toFixed(2)} °/s
               </span>
             </div>
           </div>
+
+          {/* Start Sensors Button */}
+          <Button
+            onClick={startSensors}
+            className="w-full mt-4"
+            variant="outline"
+          >
+            {sensorsActive ? 'Sensors Running (move your phone)' : 'Start Sensors'}
+          </Button>
         </div>
 
         {/* Quick Actions */}

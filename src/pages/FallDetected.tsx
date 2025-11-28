@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Smartphone } from 'lucide-react';
+const API_URL = import.meta.env.VITE_API_URL;
 
 const FallDetected = () => {
   const navigate = useNavigate();
