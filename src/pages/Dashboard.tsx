@@ -8,9 +8,9 @@ const Dashboard = () => {
   const navigate = useNavigate();
 
   // --- Sensor State (numeric values) ---
-  const [accelerometer, setAccelerometer] = useState<number>(0); // in g (approx)
+  const [accelerometer, setAccelerometer] = useState<number>(0); // m/s² magnitude
   const [gyroscope, setGyroscope] = useState<number>(0); // deg/s magnitude
-  const [sensorsActive, setSensorsActive] = useState<boolean>(false);
+  const [sensorSupported, setSensorSupported] = useState<boolean>(true);
 
   const handleTestFall = () => {
     toast.success('Fall detected! SMS would be sent to emergency contact.', {
@@ -19,57 +19,27 @@ const Dashboard = () => {
     navigate('/fall-detected');
   };
 
-  // --- Start real sensors (must be called from a user gesture) ---
-  const startSensors = async () => {
-    try {
-      // iOS-style permission
-      if (
-        typeof DeviceMotionEvent !== 'undefined' &&
-        typeof (DeviceMotionEvent as any).requestPermission === 'function'
-      ) {
-        const response = await (DeviceMotionEvent as any).requestPermission();
-        if (response !== 'granted') {
-          toast.error('Motion sensor permission denied');
-          return;
-        }
-      }
-
-      setSensorsActive(true);
-      toast.success('Sensors started. Move your phone to see live values.');
-    } catch (err) {
-      console.error(err);
-      toast.error('Motion sensors not supported or blocked on this device.');
-    }
-  };
-
-  // --- Real sensor reading via devicemotion ---
+  // --- Auto start sensors when Dashboard is mounted ---
   useEffect(() => {
-    if (!sensorsActive) return;
-
     const handleMotion = (event: DeviceMotionEvent) => {
-      const acc =
-        event.accelerationIncludingGravity || event.acceleration;
+      const acc = event.accelerationIncludingGravity || event.acceleration;
 
       if (acc) {
         const x = acc.x ?? 0;
         const y = acc.y ?? 0;
         const z = acc.z ?? 0;
 
-        // magnitude in m/s²
+        // Magnitude in m/s²
         const magnitudeMs2 = Math.sqrt(x * x + y * y + z * z);
-
-        // convert to "g" units (approx) so threshold 2.6 still meaningful
-        const magnitudeG = magnitudeMs2 / 9.81;
-
-        setAccelerometer(magnitudeG);
+        setAccelerometer(magnitudeMs2);
 
         // ---- AUTO FALL DETECTION ----
-        if (magnitudeG >= 2.6) {
+        // ≈ 2.6 g => 2.6 * 9.81 ≈ 25.5 m/s²
+        if (magnitudeMs2 >= 25.5) {
           handleTestFall();
         }
       }
 
-      // Gyroscope (rotationRate is basically gyro data in deg/s)
       const rot = event.rotationRate;
       if (rot) {
         const gx = rot.alpha ?? 0;
@@ -80,12 +50,21 @@ const Dashboard = () => {
       }
     };
 
-    window.addEventListener('devicemotion', handleMotion);
+    if (typeof window !== 'undefined' && 'DeviceMotionEvent' in window) {
+      try {
+        window.addEventListener('devicemotion', handleMotion);
+      } catch (err) {
+        console.error(err);
+        setSensorSupported(false);
+      }
+    } else {
+      setSensorSupported(false);
+    }
 
     return () => {
       window.removeEventListener('devicemotion', handleMotion);
     };
-  }, [sensorsActive]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-background p-4 pb-24">
@@ -97,7 +76,10 @@ const Dashboard = () => {
             <span className="text-2xl font-bold text-foreground">Status: SAFE</span>
             <div className="w-3 h-3 rounded-full bg-success animate-pulse" />
           </div>
-          <p className="text-muted-foreground">Fall detection is active</p>
+          <p className="text-muted-foreground">
+            Fall detection is active
+            {!sensorSupported && ' • Sensors not supported on this device/browser'}
+          </p>
         </div>
 
         {/* Sensor Status */}
@@ -111,26 +93,17 @@ const Dashboard = () => {
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Accelerometer</span>
               <span className="text-success font-medium">
-                {sensorsActive ? 'Active' : 'Inactive'} • {accelerometer.toFixed(2)} g
+                {sensorSupported ? 'Active' : 'Inactive'} • {accelerometer.toFixed(2)} m/s²
               </span>
             </div>
 
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Gyroscope</span>
               <span className="text-success font-medium">
-                {sensorsActive ? 'Active' : 'Inactive'} • {gyroscope.toFixed(2)} °/s
+                {sensorSupported ? 'Active' : 'Inactive'} • {gyroscope.toFixed(2)} °/s
               </span>
             </div>
           </div>
-
-          {/* Start Sensors Button */}
-          <Button
-            onClick={startSensors}
-            className="w-full mt-4"
-            variant="outline"
-          >
-            {sensorsActive ? 'Sensors Running (move your phone)' : 'Start Sensors'}
-          </Button>
         </div>
 
         {/* Quick Actions */}
