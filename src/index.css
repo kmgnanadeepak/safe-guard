@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 220 40% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 40% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 40% 15%;
+
+    --primary: 199 89% 48%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 15% 90%;
+    --secondary-foreground: 220 40% 15%;
+
+    --muted: 220 15% 95%;
+    --muted-foreground: 220 15% 40%;
+
+    --accent: 199 89% 48%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 220 15% 85%;
+    --input: 220 15% 85%;
+    --ring: 199 89% 48%;
+
+    --radius: 1.5rem;
+
+    --glass-bg: 0 0% 100% / 0.1;
+    --glass-border: 0 0% 100% / 0.2;
+  }
+
+  .dark {
+    --background: 229 84% 5%;
+    --foreground: 210 40% 98%;
+
+    --card: 229 70% 8%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 229 70% 8%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 199 89% 48%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 229 50% 15%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 229 50% 15%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 199 89% 48%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 229 50% 20%;
+    --input: 229 50% 20%;
+    --ring: 199 89% 48%;
+
+    --glass-bg: 0 0% 100% / 0.05;
+    --glass-border: 0 0% 100% / 0.1;
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    @apply backdrop-blur-xl bg-white/5 border border-white/10 shadow-lg;
+  }
+
+  .glass-card-light {
+    @apply backdrop-blur-xl bg-white/80 border border-white/20 shadow-lg;
+  }
+
+  .neon-glow {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.5);
+  }
+
+  .neon-glow-red {
+    box-shadow: 0 0 20px hsl(var(--destructive) / 0.5);
+  }
+
+  .neon-glow-green {
+    box-shadow: 0 0 20px hsl(var(--success) / 0.5);
+  }
+
+  .pulse-animation {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
